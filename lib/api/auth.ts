@@ -3,6 +3,7 @@ import apiClient from './client';
 export interface LoginCredentials {
   username: string;
   password: string;
+  dashboard_type?: 'hospital' | 'researcher';
 }
 
 export interface TokenResponse {
@@ -25,6 +26,9 @@ export const authApi = {
     const formData = new FormData();
     formData.append('username', credentials.username);
     formData.append('password', credentials.password);
+    if (credentials.dashboard_type) {
+      formData.append('dashboard_type', credentials.dashboard_type);
+    }
 
     const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'}/api/v1/auth/login`, {
       method: 'POST',
@@ -41,6 +45,10 @@ export const authApi = {
     if (typeof window !== 'undefined') {
       localStorage.setItem('access_token', data.access_token);
       localStorage.setItem('refresh_token', data.refresh_token);
+      // Store dashboard type for validation
+      if (credentials.dashboard_type) {
+        localStorage.setItem('dashboard_type', credentials.dashboard_type);
+      }
     }
 
     return data;
@@ -58,6 +66,7 @@ export const authApi = {
     if (typeof window !== 'undefined') {
       localStorage.removeItem('access_token');
       localStorage.removeItem('refresh_token');
+      localStorage.removeItem('dashboard_type');
     }
   },
 
