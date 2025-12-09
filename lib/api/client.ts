@@ -44,24 +44,6 @@ apiClient.interceptors.response.use(
   async (error: AxiosError) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
 
-    // Check if it's a dashboard mismatch error
-    if (error.response?.status === 401) {
-      const errorData = error.response?.data as any;
-      if (errorData?.detail?.includes('dashboard') || errorData?.detail?.includes('Dashboard')) {
-        // Dashboard mismatch - clear tokens and redirect to login
-        if (typeof window !== 'undefined') {
-          localStorage.removeItem('access_token');
-          localStorage.removeItem('refresh_token');
-          localStorage.removeItem('dashboard_type');
-          sessionStorage.clear();
-          if (!window.location.pathname.includes('/auth/login')) {
-            window.location.href = '/auth/login?error=dashboard_mismatch';
-          }
-        }
-        return Promise.reject(error);
-      }
-    }
-
     if (error.response?.status === 401 && !originalRequest._retry) {
       if (isRefreshing) {
         return new Promise((resolve, reject) => {

@@ -1,26 +1,17 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { LogIn, Mail, Lock, AlertCircle, Shield, ArrowRight } from 'lucide-react';
 import { authApi } from '@/lib/api/auth';
 
 export default function LoginPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-
-  // Check for dashboard mismatch error
-  useEffect(() => {
-    const errorParam = searchParams.get('error');
-    if (errorParam === 'dashboard_mismatch') {
-      setError('You need to log in again to access this dashboard.');
-    }
-  }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,44 +19,28 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      // First login without dashboard_type to get user info
       await authApi.login({ username: email, password });
       
       // Get user to determine role and redirect
       const user = await authApi.getMe();
       
-      // Determine dashboard type based on role
-      let dashboardType: 'hospital' | 'researcher' | undefined;
-      let redirectPath: string;
-
-      if (user.roles.includes('super_admin')) {
-        redirectPath = '/admin/super';
-        dashboardType = 'hospital'; // Admin uses hospital dashboard
-      } else if (user.roles.includes('ummc_admin')) {
-        redirectPath = '/admin/ummc';
-        dashboardType = 'hospital';
-      } else if (user.roles.includes('registry_editor') || user.roles.includes('registry_viewer')) {
-        redirectPath = '/hospital';
-        dashboardType = 'hospital';
-      } else if (user.roles.includes('researcher')) {
-        redirectPath = '/research';
-        dashboardType = 'researcher';
-      } else {
-        redirectPath = '/hospital';
-        dashboardType = 'hospital';
-      }
-
-      // Re-login with dashboard_type to get dashboard-locked token
-      await authApi.login({ username: email, password, dashboard_type: dashboardType });
-      
       // Clear any cached data before redirecting
       if (typeof window !== 'undefined') {
         sessionStorage.clear();
-        sessionStorage.setItem('last_dashboard', dashboardType);
       }
 
-      // Redirect to appropriate dashboard
-      router.push(redirectPath);
+      // Redirect based on role
+      if (user.roles.includes('super_admin')) {
+        router.push('/admin/super');
+      } else if (user.roles.includes('ummc_admin')) {
+        router.push('/admin/ummc');
+      } else if (user.roles.includes('registry_editor') || user.roles.includes('registry_viewer')) {
+        router.push('/hospital');
+      } else if (user.roles.includes('researcher')) {
+        router.push('/research');
+      } else {
+        router.push('/hospital'); // Default
+      }
     } catch (err: any) {
       setError(err.message || 'Login failed. Please check your credentials.');
     } finally {
