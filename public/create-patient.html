@@ -1,0 +1,1130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Create Patient - Cancer Registry</title>
+  <!-- Load WHO ECT Widget (like index.html) -->
+  <link rel="stylesheet" href="https://icdcdn.who.int/embeddedct/icd11ect-1.7.1.css">
+  <style>
+    /* Hide word list panel */
+    .word-list, .icd11-wordlist, #word-list, .icd11WordlistContainer {
+      display: none !important;
+    }
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      padding: 2rem;
+      max-width: 1200px;
+      margin: auto;
+      background: #f5f6f8;
+      color: #222;
+    }
+    h2 {
+      margin: 0 0 1rem;
+      color: #1d4ed8;
+    }
+    .search-box {
+      background: #fff;
+      border: 1px solid #e7e9ed;
+      border-radius: 14px;
+      box-shadow: 0 4px 16px rgba(16,24,40,0.06);
+      padding: 16px;
+      margin-bottom: 20px;
+    }
+    .search-input-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      position: relative;
+    }
+    .search-icon {
+      position: absolute;
+      left: 12px;
+      color: #667085;
+      font-size: 18px;
+    }
+    .search-input {
+      flex: 1;
+      border: 1px solid #d0d5dd;
+      border-radius: 10px;
+      padding: 10px 12px 10px 40px;
+      font-size: 15px;
+      outline: none;
+      background: #fff;
+    }
+    .search-input:focus {
+      border-color: #2b7cff;
+      box-shadow: 0 0 0 4px rgba(43,124,255,0.14);
+    }
+    .clear-btn {
+      border: none;
+      background: #eef2ff;
+      color: #1d4ed8;
+      padding: 8px 12px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 14px;
+      visibility: hidden;
+    }
+    .clear-btn:hover {
+      background: #e0e7ff;
+    }
+    .status-badge {
+      display: inline-block;
+      font-size: 12px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid #e7e9ed;
+      color: #344054;
+      background: #f9fafb;
+      margin-top: 10px;
+    }
+    .status-badge.ok {
+      color: #166534;
+      background: #ecfdf5;
+      border-color: #bbf7d0;
+    }
+    .status-badge.error {
+      color: #dc2626;
+      background: #fef2f2;
+      border-color: #fecaca;
+    }
+    .results-dropdown {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      margin-top: 8px;
+      background: #fff;
+      border: 1px solid #e7e9ed;
+      border-radius: 10px;
+      box-shadow: 0 8px 24px rgba(16,24,40,0.12);
+      max-height: 300px;
+      overflow-y: auto;
+      z-index: 1000;
+      display: none;
+    }
+    .results-dropdown.show {
+      display: block;
+    }
+    .result-item {
+      padding: 12px 16px;
+      border-bottom: 1px solid #f0f2f6;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .result-item:hover {
+      background: #f9fafb;
+    }
+    .result-item:last-child {
+      border-bottom: none;
+    }
+    .result-code {
+      font-family: monospace;
+      font-weight: bold;
+      color: #1d4ed8;
+      font-size: 14px;
+      margin-bottom: 4px;
+    }
+    .result-title {
+      color: #475467;
+      font-size: 13px;
+    }
+    .selected-code {
+      margin-top: 10px;
+      padding: 10px;
+      background: #ecfdf5;
+      border: 1px solid #bbf7d0;
+      border-radius: 8px;
+      color: #166534;
+      font-size: 14px;
+    }
+    .form-section {
+      background: #fff;
+      border: 1px solid #e7e9ed;
+      border-radius: 14px;
+      box-shadow: 0 4px 16px rgba(16,24,40,0.06);
+      padding: 20px;
+      margin-top: 20px;
+    }
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 16px;
+      margin-top: 16px;
+    }
+    .form-group {
+      display: flex;
+      flex-direction: column;
+    }
+    .form-group label {
+      font-size: 12px;
+      color: #667085;
+      margin-bottom: 6px;
+      font-weight: 500;
+    }
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+      padding: 10px;
+      border: 1px solid #d0d5dd;
+      border-radius: 10px;
+      background: #fff;
+      font-size: 14px;
+      outline: none;
+      font-family: inherit;
+    }
+    .form-group textarea {
+      resize: vertical;
+      min-height: 80px;
+    }
+    .form-group input:focus,
+    .form-group select:focus {
+      border-color: #2b7cff;
+      box-shadow: 0 0 0 4px rgba(43,124,255,0.14);
+    }
+    .form-group input[readonly] {
+      background: #f9fafb;
+      color: #475467;
+    }
+    .actions {
+      margin-top: 20px;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    .btn {
+      background: #1d4ed8;
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      padding: 10px 20px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 14px;
+    }
+    .btn:hover {
+      background: #1e40af;
+    }
+    .btn:disabled {
+      background: #9ca3af;
+      cursor: not-allowed;
+    }
+    .btn-secondary {
+      background: #6b7280;
+    }
+    .btn-secondary:hover {
+      background: #4b5563;
+    }
+    .error-message {
+      margin-top: 10px;
+      padding: 10px;
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      border-radius: 8px;
+      color: #dc2626;
+      font-size: 13px;
+    }
+    .back-button {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: #6b7280;
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      padding: 10px 20px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 14px;
+      margin-bottom: 20px;
+      text-decoration: none;
+      transition: background 0.2s;
+    }
+    .back-button:hover {
+      background: #4b5563;
+    }
+    .back-button:active {
+      transform: scale(0.98);
+    }
+  </style>
+</head>
+<body>
+  <a href="/hospital" class="back-button">
+    ← Back to Dashboard
+  </a>
+  <h2>Create New Patient Record</h2>
+  
+  <!-- ICD-11 Search - Using WHO ECT Widget (like index.html) -->
+  <h3>Search ICD-11 Disease</h3>
+  <div class="search-box">
+    <div class="search-input-wrap">
+      <span class="search-icon" aria-hidden="true">🔎</span>
+      <input 
+        type="text" 
+        class="ctw-input search-input" 
+        autocomplete="off" 
+        data-ctw-ino="1" 
+        placeholder="Search ICD-11 (e.g., colon cancer)"
+      />
+      <button type="button" class="clear-btn" aria-label="Clear">✕</button>
+    </div>
+    <div class="status-line">
+      <span id="status-badge" class="status-badge init">Initializing...</span>
+    </div>
+    <div class="ctw-window" data-ctw-ino="1"></div>
+  </div>
+
+  <!-- Patient Form -->
+  <div class="form-section">
+    <h2>Patient Information</h2>
+    <form id="patientForm">
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Patient ID</label>
+          <input type="text" id="patient_id" />
+        </div>
+        <div class="form-group">
+          <label>Patient Name *</label>
+          <input type="text" id="patient_name" required />
+        </div>
+        <div class="form-group">
+          <label>Gender</label>
+          <select id="gender">
+            <option value="">Select...</option>
+            <option>Male</option>
+            <option>Female</option>
+            <option>Other</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Date of Birth</label>
+          <input type="date" id="date_of_birth" />
+        </div>
+        <div class="form-group">
+          <label>Nationality</label>
+          <input type="text" id="nationality" />
+        </div>
+        <div class="form-group">
+          <label>Address Line 1</label>
+          <input type="text" id="address_line1" />
+        </div>
+        <div class="form-group">
+          <label>City</label>
+          <input type="text" id="address_city" />
+        </div>
+        <div class="form-group">
+          <label>State/Province</label>
+          <input type="text" id="address_state" />
+        </div>
+        <div class="form-group">
+          <label>Postcode</label>
+          <input type="text" id="address_postcode" />
+        </div>
+        <div class="form-group">
+          <label>Country</label>
+          <input type="text" id="address_country" />
+        </div>
+        <div class="form-group">
+          <label>Diagnosis Date *</label>
+          <input type="date" id="diagnosis_date" required />
+        </div>
+        <div class="form-group">
+          <label>Age at Diagnosis</label>
+          <input type="number" id="age_at_diagnosis" readonly />
+        </div>
+        <div class="form-group">
+          <label>ICD-11 Main Code *</label>
+          <input type="text" id="icd11_main_code" required readonly />
+        </div>
+        <div class="form-group">
+          <label>ICD-11 Description</label>
+          <input type="text" id="icd11_description" readonly />
+        </div>
+        <div class="form-group">
+          <label>ICD-11 Composite Expression</label>
+          <input type="text" id="icd11_composite_expression" readonly />
+        </div>
+        <div class="form-group">
+          <label>ICD-11 Topography Code</label>
+          <input type="text" id="icd11_topography_code" readonly />
+        </div>
+        <div class="form-group">
+          <label>Topography</label>
+          <input type="text" id="icd11_topography" readonly />
+        </div>
+        <div class="form-group">
+          <label>ICD-11 Morphology Code</label>
+          <input type="text" id="icd11_morphology_code" readonly />
+        </div>
+        <div class="form-group">
+          <label>Morphology</label>
+          <input type="text" id="icd11_morphology" readonly />
+        </div>
+        <div class="form-group">
+          <label>ICD-11 Behavior Code</label>
+          <input type="text" id="icd11_behavior_code" readonly />
+        </div>
+        <div class="form-group">
+          <label>ICD-11 Stage Code</label>
+          <input type="text" id="icd11_stage_code" readonly />
+        </div>
+        <div class="form-group">
+          <label>Laterality</label>
+          <input type="text" id="laterality" readonly />
+        </div>
+        <div class="form-group">
+          <label>ICD-11 Manifestation Code</label>
+          <input type="text" id="icd11_manifestation_code" readonly />
+        </div>
+        <div class="form-group">
+          <label>Manifestation</label>
+          <input type="text" id="manifestation" readonly />
+        </div>
+        <div class="form-group">
+          <label>T Category</label>
+          <input type="text" id="t_category" placeholder="T1, T2..." />
+        </div>
+        <div class="form-group">
+          <label>N Category</label>
+          <input type="text" id="n_category" placeholder="N0, N1..." />
+        </div>
+        <div class="form-group">
+          <label>M Category</label>
+          <input type="text" id="m_category" placeholder="M0, M1..." />
+        </div>
+        <div class="form-group">
+          <label>Multiple Primary</label>
+          <input type="checkbox" id="multiple_primary_flag" />
+        </div>
+        <div class="form-group">
+          <label>Basis of Diagnosis</label>
+          <select id="basis_of_diagnosis">
+            <option value="">Select...</option>
+            <option>Clinical</option>
+            <option>Imaging</option>
+            <option>Laboratory</option>
+            <option>Pathology</option>
+            <option>Unknown</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Primary Site Confirmed</label>
+          <input type="checkbox" id="primary_site_confirmed" checked />
+        </div>
+        <div class="form-group">
+          <label>Surgery Done</label>
+          <input type="checkbox" id="surgery_done" />
+        </div>
+        <div class="form-group">
+          <label>Surgery Date</label>
+          <input type="date" id="surgery_date" />
+        </div>
+        <div class="form-group">
+          <label>Chemotherapy Done</label>
+          <input type="checkbox" id="chemotherapy_done" />
+        </div>
+        <div class="form-group">
+          <label>Chemo Start Date</label>
+          <input type="date" id="chemo_start_date" />
+        </div>
+        <div class="form-group">
+          <label>Radiotherapy Done</label>
+          <input type="checkbox" id="radiotherapy_done" />
+        </div>
+        <div class="form-group">
+          <label>Hormonal Therapy</label>
+          <input type="checkbox" id="hormonal_therapy" />
+        </div>
+        <div class="form-group">
+          <label>Immunotherapy</label>
+          <input type="checkbox" id="immunotherapy" />
+        </div>
+        <div class="form-group">
+          <label>Treatment Intent</label>
+          <select id="treatment_intent">
+            <option value="">Select...</option>
+            <option>Curative</option>
+            <option>Palliative</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Treatment Notes</label>
+          <textarea id="treatment_notes" rows="3"></textarea>
+        </div>
+        <div class="form-group">
+          <label>Follow-up Date</label>
+          <input type="date" id="followup_date" />
+        </div>
+        <div class="form-group">
+          <label>Vital Status</label>
+          <select id="vital_status">
+            <option value="">Select...</option>
+            <option>Alive</option>
+            <option>Dead</option>
+            <option>Unknown</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Cause of Death ICD-11</label>
+          <input type="text" id="cause_of_death_icd11" />
+        </div>
+        <div class="form-group">
+          <label>Recurrence</label>
+          <input type="checkbox" id="recurrence" />
+        </div>
+        <div class="form-group">
+          <label>Recurrence Date</label>
+          <input type="date" id="recurrence_date" />
+        </div>
+        <div class="form-group">
+          <label>Metastasis</label>
+          <input type="checkbox" id="metastasis" />
+        </div>
+        <div class="form-group">
+          <label>Survival (months)</label>
+          <input type="number" id="survival_months" placeholder="12" />
+        </div>
+        <div class="form-group">
+          <label>Follow-up Notes</label>
+          <textarea id="followup_notes" rows="3"></textarea>
+        </div>
+        <div class="form-group">
+          <label>Data Source</label>
+          <select id="data_source">
+            <option>Hospital EMR</option>
+            <option>Pathology</option>
+            <option>Manual</option>
+            <option>Other</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Entered By</label>
+          <input type="text" id="entered_by" placeholder="Registrar" />
+        </div>
+        <div class="form-group">
+          <label>Entry Mode</label>
+          <select id="entry_mode">
+            <option value="Manual" selected>Manual</option>
+            <option value="Web">Web</option>
+            <option value="AI">AI</option>
+          </select>
+        </div>
+      </div>
+      <div class="actions">
+        <button type="button" id="saveBtn" class="btn">Save Patient</button>
+        <button type="button" id="clearFormBtn" class="btn btn-secondary">Clear Form</button>
+        <span id="saveStatus" class="status-badge">Idle</span>
+      </div>
+    </form>
+  </div>
+
+  <!-- Load WHO ECT Widget (like index.html) -->
+  <link rel="stylesheet" href="https://icdcdn.who.int/embeddedct/icd11ect-1.7.1.css">
+  <script src="https://icdcdn.who.int/embeddedct/icd11ect-1.7.1.js"></script>
+  <script>
+    // Hide and remove word list panel - reduced frequency to avoid DOM issues
+    setInterval(() => {
+      document.querySelectorAll(".word-list, .icd11-wordlist, #word-list, .icd11WordlistContainer").forEach(e => e.remove());
+    }, 2000); // Changed from 200ms to 2000ms (2 seconds)
+  </script>
+  <script>
+    const API_BASE = 'http://127.0.0.1:8000';
+    const inputEl = document.querySelector('.ctw-input');
+    const clearBtn = document.querySelector('.clear-btn');
+    const statusBadge = document.getElementById('status-badge');
+    const saveBtn = document.getElementById('saveBtn');
+    const clearFormBtn = document.getElementById('clearFormBtn');
+    const saveStatus = document.getElementById('saveStatus');
+
+    // Authentication check - redirect to login if not authenticated
+    function checkAuthentication() {
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        // Redirect to login page
+        window.location.href = '/login?redirect=' + encodeURIComponent(window.location.pathname);
+        return false;
+      }
+      return true;
+    }
+
+    // Get auth token from localStorage
+    function getAuthToken() {
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        checkAuthentication();
+        return null;
+      }
+      return token;
+    }
+
+    // Simple fetch with error handling
+    async function fetchAPI(url, options = {}) {
+      try {
+        const token = getAuthToken();
+        if (!token) {
+          throw new Error('Authentication required. Please login first.');
+        }
+        
+        const headers = {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+          ...options.headers,
+        };
+
+        const response = await fetch(`${API_BASE}${url}`, {
+          ...options,
+          headers,
+        });
+
+        if (!response.ok) {
+          // Handle 401/403 - authentication errors
+          if (response.status === 401 || response.status === 403) {
+            // Clear invalid token and redirect to login
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('refresh_token');
+            window.location.href = '/login?redirect=' + encodeURIComponent(window.location.pathname);
+            throw new Error('Session expired. Please login again.');
+          }
+          
+          const errorText = await response.text();
+          throw new Error(`HTTP ${response.status}: ${errorText}`);
+        }
+
+        return await response.json();
+      } catch (error) {
+        console.error('API Error:', error);
+        throw error;
+      }
+    }
+
+    // Get ICD details from backend API
+    async function getICDDetails(code) {
+      try {
+        const res = await fetch(`${API_BASE}/api/icd/${encodeURIComponent(code)}`);
+        if (!res.ok) {
+          console.warn(`ICD code ${code} not found: ${res.status}`);
+          return null;
+        }
+        const data = await res.json();
+        // Backend returns: { code, raw, parsed, auto_fill_fields }
+        // Use parsed data which has the structured fields
+        return data.parsed || data.auto_fill_fields || data;
+      } catch (error) {
+        console.error(`Error fetching ICD details for ${code}:`, error);
+        return null;
+      }
+    }
+
+    // Calculate age at diagnosis when dates change
+    function calculateAgeAtDiagnosis() {
+      const dob = document.getElementById('date_of_birth').value;
+      const diag = document.getElementById('diagnosis_date').value;
+      const ageEl = document.getElementById('age_at_diagnosis');
+      if (dob && diag && ageEl) {
+        const dobDate = new Date(dob);
+        const diagDate = new Date(diag);
+        const age = diagDate.getFullYear() - dobDate.getFullYear() - 
+          ((diagDate.getMonth() < dobDate.getMonth()) || 
+           (diagDate.getMonth() === dobDate.getMonth() && diagDate.getDate() < dobDate.getDate()));
+        ageEl.value = age >= 0 ? age : '';
+      } else if (ageEl) {
+        ageEl.value = '';
+      }
+    }
+
+    // WHO ECT Configuration (exactly like index.html)
+    const mySettings = {
+      apiServerUrl: "https://id.who.int",
+      apiSecured: true,
+      icdMinorVersion: "2025-01",
+      icdLinearization: "mms",
+      popupMode: true
+    };
+    const myCallbacks = {
+      async getNewTokenFunction() {
+        async function fetchTokenWithRetry(max = 4, delayMs = 800) {
+          let lastErr = null;
+          for (let i = 0; i < max; i++) {
+            try {
+              const res = await fetch(`${API_BASE}/api/token`);
+              if (!res.ok) throw new Error('token http error');
+              const data = await res.json();
+              if (!data || !data.access_token) throw new Error('no access_token');
+              return data.access_token;
+            } catch (e) {
+              lastErr = e;
+              await new Promise(r => setTimeout(r, delayMs));
+            }
+          }
+          throw lastErr || new Error('token fetch failed');
+        }
+        return await fetchTokenWithRetry();
+      },
+      async selectedEntityFunction(selected) {
+        const raw = selected.code || selected.id;
+        if (!raw) return;
+        
+        // Helper function to set field value (null if not available)
+        const setField = (id, value) => {
+          const el = document.getElementById(id);
+          if (el) {
+            el.value = (value && value !== 'NA' && value !== '') ? value : 'null';
+          }
+        };
+        
+        // Reset fields to null to avoid stale values from previous selections
+        const reset = () => {
+          const ids = [
+            'icd11_topography_code','icd11_topography',
+            'icd11_morphology_code','icd11_morphology',
+            'icd11_behavior_code','icd11_stage_code',
+            'laterality','icd11_manifestation_code','manifestation'
+          ];
+          for (const id of ids) {
+            setField(id, null);
+          }
+        };
+        reset();
+        
+        const [clusterStr, manifestStr] = String(raw).split('/');
+        const parts = String(clusterStr).split('&').map(s => s.trim()).filter(Boolean);
+        const stem = parts[0];
+        const manifestParts = manifestStr ? manifestStr.split('&').map(s => s.trim()).filter(Boolean) : [];
+        const manifestExts = manifestParts.filter(e => e.startsWith('XA') || e.startsWith('XM') || e.startsWith('XH') || e.startsWith('XK') || e.startsWith('XS'));
+        const exts = parts.slice(1).concat(manifestExts);
+        
+        // Set main code and composite expression
+        setField('icd11_main_code', stem);
+        setField('icd11_composite_expression', String(raw));
+        
+        // Get full ICD details from backend for auto-fill
+        let icdData = null;
+        try {
+          const fullData = await fetch(`${API_BASE}/api/icd/${encodeURIComponent(stem)}`);
+          if (fullData.ok) {
+            const response = await fullData.json();
+            icdData = response.parsed || response.auto_fill_fields || null;
+            
+            // Auto-fill from backend parsed data
+            if (icdData) {
+              setField('icd11_description', icdData.icd11_description || selected.title || '');
+              setField('icd11_topography_code', icdData.icd11_topography_code);
+              setField('icd11_topography', icdData.icd11_topography);
+              setField('icd11_morphology_code', icdData.icd11_morphology_code);
+              setField('icd11_morphology', icdData.icd11_morphology);
+              setField('icd11_behavior_code', icdData.icd11_behavior_code);
+              setField('icd11_stage_code', icdData.icd11_stage_code);
+              setField('laterality', icdData.laterality);
+              setField('icd11_manifestation_code', icdData.icd11_manifestation_code);
+              setField('manifestation', icdData.manifestation);
+            }
+          }
+        } catch (error) {
+          console.warn('Could not fetch full ICD details:', error);
+        }
+        
+        // If backend didn't provide data, use selected title
+        if (!icdData || !icdData.icd11_description) {
+          setField('icd11_description', selected.title || '');
+        }
+        
+        // Process extensions from composite expression
+        let top = null, morph = null, beh = null, stageCode = null;
+        const xsCodes = [];
+        
+        for (const e of exts) {
+          if (e.startsWith('XA')) {
+            if (!top) {
+              top = e;
+              try {
+                const topData = await getICDDetails(e);
+                if (topData) {
+                  setField('icd11_topography_code', e);
+                  setField('icd11_topography', topData.icd11_topography || topData.icd11_description || '');
+                }
+              } catch {}
+            }
+          } else if (e.startsWith('XM') || e.startsWith('XH')) {
+            morph = e;
+            try {
+              const morphData = await getICDDetails(e);
+              if (morphData) {
+                setField('icd11_morphology_code', e);
+                setField('icd11_morphology', morphData.icd11_morphology || morphData.icd11_description || null);
+              } else {
+                setField('icd11_morphology_code', e);
+                setField('icd11_morphology', null);
+              }
+            } catch {
+              setField('icd11_morphology_code', e);
+              setField('icd11_morphology', null);
+            }
+          } else if (e.startsWith('XK')) {
+            try {
+              const latData = await getICDDetails(e);
+              if (latData) {
+                const lt = (latData.icd11_description || latData.laterality || '').toLowerCase();
+                let v = 'null';
+                if (lt.includes('left')) v = 'Left';
+                else if (lt.includes('right')) v = 'Right';
+                else if (lt.includes('bilateral')) v = 'Bilateral';
+                else if (lt) v = 'Unknown';
+                setField('laterality', v);
+              }
+            } catch {
+              // Fallback mapping
+              let v = 'null';
+              if (e === 'XK9K') v = 'Right';
+              else if (e === 'XK8G') v = 'Left';
+              else if (e === 'XK9J') v = 'Bilateral';
+              else if (e === 'XK70') v = 'Unilateral, unspecified';
+              setField('laterality', v);
+            }
+          } else if (e.startsWith('XS')) {
+            xsCodes.push(e);
+            try {
+              const xsData = await getICDDetails(e);
+              if (xsData) {
+                const tt = (xsData.icd11_description || '').toLowerCase();
+                if (tt.includes('stage') || tt.includes('severity')) {
+                  stageCode = e;
+                  setField('icd11_stage_code', e);
+                } else if (tt.includes('behavior') || tt.includes('behaviour')) {
+                  beh = e;
+                  setField('icd11_behavior_code', e);
+                }
+              }
+            } catch {
+              if (!stageCode) {
+                stageCode = e;
+                setField('icd11_stage_code', e);
+              }
+            }
+          }
+        }
+        
+        // Set defaults if not found
+        if (!top) setField('icd11_topography_code', null);
+        if (!morph) setField('icd11_morphology_code', null);
+        if (!beh) setField('icd11_behavior_code', null);
+        if (!stageCode && xsCodes.length > 0) {
+          setField('icd11_stage_code', xsCodes[0]);
+        } else if (!stageCode) {
+          setField('icd11_stage_code', null);
+        }
+        
+        // Process manifestation codes
+        if (manifestStr) {
+          const manifestCodes = manifestStr.split('&').map(s => s.trim()).filter(Boolean);
+          for (const mc of manifestCodes) {
+            if (mc.startsWith('MG')) {
+              setField('icd11_manifestation_code', mc);
+              try {
+                const mData = await getICDDetails(mc);
+                if (mData) {
+                  setField('manifestation', mData.icd11_description || mData.manifestation || '');
+                } else {
+                  // Fallback
+                  if (mc === 'MG30.10') setField('manifestation', 'Chronic cancer pain');
+                  else setField('manifestation', null);
+                }
+              } catch {
+                if (mc === 'MG30.10') setField('manifestation', 'Chronic cancer pain');
+                else setField('manifestation', null);
+              }
+              break;
+            }
+          }
+        }
+        
+        // Calculate age at diagnosis after ICD selection
+        calculateAgeAtDiagnosis();
+        if (window.ECT && window.ECT.Handler) window.ECT.Handler.clear(1);
+      }
+    };
+    if (window.ECT && window.ECT.Handler) {
+      window.ECT.Handler.configure(mySettings, myCallbacks);
+      window.ECT.Handler.bind(1);
+    }
+
+    // Initialize ECT (like index.html)
+    async function initECT() {
+      const badge = document.getElementById('status-badge');
+      async function fetchTokenWithRetry(max = 4, delayMs = 800) {
+        let lastErr = null;
+        for (let i = 0; i < max; i++) {
+          try {
+            const r = await fetch(`${API_BASE}/api/token`);
+            if (!r.ok) throw new Error('token http error');
+            const j = await r.json();
+            if (!j || !j.access_token) throw new Error('no token');
+            return j.access_token;
+          } catch (e) {
+            lastErr = e;
+            await new Promise(res => setTimeout(res, delayMs));
+          }
+        }
+        throw lastErr || new Error('token fetch failed');
+      }
+      try {
+        const t = await fetchTokenWithRetry();
+        if (t) {
+          if (badge) { badge.textContent = 'Ready'; badge.className = 'status-badge ok'; }
+          const inputEl = document.querySelector('.ctw-input[data-ctw-ino="1"]');
+          if (inputEl) {
+            inputEl.disabled = false;
+            inputEl.classList.add('apiInitializationCompleted');
+          }
+        }
+      } catch (e) {
+        if (badge) { badge.textContent = 'Token Error'; badge.className = 'status-badge init'; }
+      }
+    }
+    document.addEventListener('DOMContentLoaded', () => {
+      // Check authentication first
+      if (!checkAuthentication()) {
+        return; // Redirect will happen, don't continue
+      }
+      
+      initECT();
+      // Initialize age calculation
+      calculateAgeAtDiagnosis();
+      // Add event listeners for age calculation
+      const dobInput = document.getElementById('date_of_birth');
+      const diagInput = document.getElementById('diagnosis_date');
+      if (dobInput) dobInput.addEventListener('change', calculateAgeAtDiagnosis);
+      if (diagInput) diagInput.addEventListener('change', calculateAgeAtDiagnosis);
+    });
+
+    // Save patient
+    async function savePatient() {
+      const form = document.getElementById('patientForm');
+      if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+      }
+
+      saveStatus.textContent = 'Saving...';
+      saveStatus.className = 'status-badge';
+      saveBtn.disabled = true;
+
+      // Build address object if any address fields are filled
+      const addressLine1 = document.getElementById('address_line1').value;
+      const addressCity = document.getElementById('address_city').value;
+      const addressState = document.getElementById('address_state').value;
+      const addressPostcode = document.getElementById('address_postcode').value;
+      const addressCountry = document.getElementById('address_country').value;
+      
+      let address = undefined;
+      if (addressLine1 || addressCity || addressState || addressPostcode || addressCountry) {
+        address = {};
+        if (addressLine1) address.line1 = addressLine1;
+        if (addressCity) address.city = addressCity;
+        if (addressState) address.state = addressState;
+        if (addressPostcode) address.postcode = addressPostcode;
+        if (addressCountry) address.country = addressCountry;
+      }
+
+      // Helper to convert 'null' string to undefined, empty to undefined
+      const getValue = (id) => {
+        const el = document.getElementById(id);
+        if (!el) return undefined;
+        const val = el.value?.trim();
+        if (!val || val === 'null' || val === 'NA' || val === '') return undefined;
+        return val;
+      };
+      
+      // Helper to get value with default (for fields that should have defaults)
+      const getValueOrDefault = (id, defaultValue) => {
+        const val = getValue(id);
+        return val !== undefined ? val : defaultValue;
+      };
+
+      const payload = {
+        patient_id: document.getElementById('patient_id').value || undefined,
+        patient_name: document.getElementById('patient_name').value,
+        gender: document.getElementById('gender').value || undefined,
+        date_of_birth: document.getElementById('date_of_birth').value || undefined,
+        nationality: document.getElementById('nationality').value || undefined,
+        address: address,
+        diagnosis_date: document.getElementById('diagnosis_date').value,
+        icd11_main_code: document.getElementById('icd11_main_code').value,
+        icd11_description: document.getElementById('icd11_description').value || undefined,
+        icd11_composite_expression: document.getElementById('icd11_composite_expression').value || undefined,
+        icd11_manifestation_code: document.getElementById('icd11_manifestation_code').value || undefined,
+        manifestation: document.getElementById('manifestation').value || undefined,
+        icd11_topography_code: document.getElementById('icd11_topography_code').value || undefined,
+        icd11_topography: document.getElementById('icd11_topography').value || undefined,
+        icd11_morphology_code: document.getElementById('icd11_morphology_code').value || undefined,
+        icd11_morphology: document.getElementById('icd11_morphology').value || undefined,
+        icd11_behavior_code: document.getElementById('icd11_behavior_code').value || undefined,
+        icd11_stage_code: document.getElementById('icd11_stage_code').value || undefined,
+        laterality: document.getElementById('laterality').value || undefined,
+        t_category: getValue('t_category'),
+        n_category: getValue('n_category'),
+        m_category: getValue('m_category'),
+        multiple_primary_flag: document.getElementById('multiple_primary_flag').checked || undefined,
+        basis_of_diagnosis: getValue('basis_of_diagnosis'),
+        primary_site_confirmed: document.getElementById('primary_site_confirmed').checked || undefined,
+        surgery_done: document.getElementById('surgery_done').checked || undefined,
+        surgery_date: getValue('surgery_date') || undefined,
+        chemotherapy_done: document.getElementById('chemotherapy_done').checked || undefined,
+        chemo_start_date: getValue('chemo_start_date') || undefined,
+        radiotherapy_done: document.getElementById('radiotherapy_done').checked || undefined,
+        hormonal_therapy: document.getElementById('hormonal_therapy').checked || undefined,
+        immunotherapy: document.getElementById('immunotherapy').checked || undefined,
+        treatment_intent: getValue('treatment_intent'),
+        treatment_notes: getValue('treatment_notes'),
+        followup_date: getValue('followup_date') || undefined,
+        vital_status: getValue('vital_status'),
+        cause_of_death_icd11: getValue('cause_of_death_icd11'),
+        recurrence: document.getElementById('recurrence').checked || undefined,
+        recurrence_date: getValue('recurrence_date') || undefined,
+        metastasis: document.getElementById('metastasis').checked || undefined,
+        survival_months: getValue('survival_months') ? Number(getValue('survival_months')) : undefined,
+        followup_notes: getValue('followup_notes'),
+        data_source: getValueOrDefault('data_source', 'Manual'),
+        entry_mode: getValueOrDefault('entry_mode', 'Manual'),
+        entered_by: getValue('entered_by'),
+      };
+      
+      // Debug: Log payload before sending
+      console.log('Sending patient data:', JSON.stringify(payload, null, 2));
+
+      try {
+        // Validate required fields before sending
+        if (!payload.patient_name || !payload.patient_name.trim()) {
+          throw new Error('Patient name is required');
+        }
+        if (!payload.diagnosis_date) {
+          throw new Error('Diagnosis date is required');
+        }
+        if (!payload.icd11_main_code || !payload.icd11_main_code.trim()) {
+          throw new Error('ICD-11 main code is required');
+        }
+        
+        console.log('Sending request to:', `${API_BASE}/api/v1/patients/`);
+        console.log('Payload:', payload);
+        
+        const response = await fetch(`${API_BASE}/api/v1/patients/`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${getAuthToken()}`
+          },
+          body: JSON.stringify(payload),
+        });
+
+        console.log('Response status:', response.status, response.statusText);
+
+        if (!response.ok) {
+          let errorData;
+          try {
+            errorData = await response.json();
+            console.error('Error response:', errorData);
+          } catch {
+            const errorText = await response.text();
+            console.error('Error text:', errorText);
+            errorData = { detail: errorText || `HTTP ${response.status}: ${response.statusText}` };
+          }
+          throw new Error(errorData.detail || `HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        
+        console.log('Patient created successfully:', data);
+        saveStatus.textContent = 'Saved successfully!';
+        saveStatus.className = 'status-badge ok';
+        
+        let successMsg = 'Patient created successfully!';
+        if (data.databases_updated) {
+          successMsg += `\n\nDatabases updated:\n${data.databases_updated.join('\n')}`;
+        }
+        if (data.anonymized_verified !== undefined) {
+          successMsg += `\n\nAnonymized view: ${data.anonymized_verified ? 'Verified ✓' : 'Pending'}`;
+        }
+        
+        alert(successMsg);
+        
+        // Clear form after save - DISABLED to prevent accidental data loss
+        // User can manually clear the form using the "Clear Form" button
+        // setTimeout(() => {
+        //   clearForm();
+        // }, 2000);
+      } catch (error) {
+        console.error('Save error:', error);
+        saveStatus.textContent = 'Save failed';
+        saveStatus.className = 'status-badge error';
+        
+        let errorMsg = 'Failed to save patient. ';
+        if (error.message) {
+          errorMsg += error.message;
+        } else {
+          errorMsg += 'Please check your connection and try again.';
+        }
+        
+        alert(errorMsg);
+      } finally {
+        saveBtn.disabled = false;
+      }
+    }
+
+    // Clear form
+    function clearForm() {
+      document.getElementById('patientForm').reset();
+      // Clear address fields
+      document.getElementById('address_line1').value = '';
+      document.getElementById('address_city').value = '';
+      document.getElementById('address_state').value = '';
+      document.getElementById('address_postcode').value = '';
+      document.getElementById('address_country').value = '';
+      // Clear age
+      document.getElementById('age_at_diagnosis').value = '';
+      // Clear ICD fields
+      document.getElementById('icd11_main_code').value = '';
+      document.getElementById('icd11_description').value = '';
+      document.getElementById('icd11_composite_expression').value = '';
+      document.getElementById('icd11_manifestation_code').value = '';
+      document.getElementById('manifestation').value = '';
+      statusBadge.textContent = 'Ready';
+      statusBadge.className = 'status-badge';
+      saveStatus.textContent = 'Idle';
+      saveStatus.className = 'status-badge';
+    }
+
+    // Event listeners
+    saveBtn.addEventListener('click', savePatient);
+    clearFormBtn.addEventListener('click', clearForm);
+
+    // Test connection and authentication on load
+    window.addEventListener('load', async () => {
+      // Check authentication first
+      if (!checkAuthentication()) {
+        return; // Redirect will happen
+      }
+      
+      try {
+        // Test backend connection (ICD-11 token endpoint is public, but we still check auth)
+        await fetch(`${API_BASE}/api/v1/icd11/token`);
+        statusBadge.textContent = 'Ready';
+        statusBadge.className = 'status-badge ok';
+      } catch (error) {
+        statusBadge.textContent = 'Connection failed';
+        statusBadge.className = 'status-badge error';
+        const errorMessage = document.getElementById('errorMessage');
+        if (errorMessage) {
+          errorMessage.textContent = `Cannot connect to backend at ${API_BASE}. Please ensure the server is running.`;
+          errorMessage.style.display = 'block';
+        }
+      }
+    });
+  </script>
+</body>
+</html>
+

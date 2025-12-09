@@ -1,0 +1,4 @@
+patient_name,diagnosis_date,icd11_main_code,patient_id,gender,date_of_birth,nationality,icd11_description,t_category,n_category,m_category,vital_status,data_source,entry_mode
+John Doe,2025-01-15,2C10.Z,P001,Male,1975-03-20,Malaysian,Malignant neoplasm of stomach,T2,N1,M0,Alive,Hospital EMR,Bulk
+Jane Smith,2025-01-16,2C20.0,P002,Female,1980-06-15,Malaysian,Malignant neoplasm of colon,T3,N2,M0,Alive,Hospital EMR,Bulk
+Ahmad bin Ali,2025-01-17,2C30.1,P003,Male,1965-08-10,Malaysian,Malignant neoplasm of lung,T4,N3,M1,Deceased,Pathology,Bulk
