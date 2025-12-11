@@ -1,0 +1,36 @@
+{
+  "jupyter-lite-schema-version": 0,
+  "jupyter-config-data": {
+    "appName": "ML Training Lab",
+    "appVersion": "0.1.0",
+    "appUrl": "/static/jupyterlite/lite-build",
+    "baseUrl": "/static/jupyterlite/lite-build/",
+    "faviconUrl": "/static/jupyterlite/lite-build/favicon.ico",
+    "fullMathjaxUrl": "/static/jupyterlite/lite-build/build/mathjax/tex-chtml.js",
+    "mathjaxConfig": "TeX-AMS_CHTML-full,Safe",
+    "exposeAppInBrowser": true,
+    "collaborative": false,
+    "disabledExtensions": [
+      "@jupyterlab/filebrowser-extension:share-file"
+    ],
+    "settingsOverrides": {
+      "@jupyterlab/apputils-extension:notification": {
+        "fetchNews": "false"
+      },
+      "@jupyterlab/docmanager-extension:plugin": {
+        "autosave": true,
+        "autosaveInterval": 120
+      }
+    }
+  },
+  "litePluginSettings": {
+    "@jupyterlite/pyodide-kernel-extension:kernel": {
+      "pyodideUrl": "/static/jupyterlite/lite-build/build/pyodide/pyodide.js",
+      "pipliteWheelUrl": "/static/jupyterlite/lite-build/build/pyodide/piplite-0.4.2-py3-none-any.whl",
+      "disablePyPIFallback": false,
+      "pipliteUrls": [
+        "/static/jupyterlite/lite-build/build/pyodide/piplite-0.4.2-py3-none-any.whl"
+      ]
+    }
+  }
+}

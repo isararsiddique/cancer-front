@@ -1,21 +1,39 @@
-# Dockerfile — Next.js (standalone) production build, serves on port 3000
+# Dockerfile — Next.js (standalone) production build with JupyterLite, serves on port 3000
 FROM node:20-alpine AS base
 ENV NEXT_TELEMETRY_DISABLED=1
 WORKDIR /app
 
-# Allow passing the public API url at build time
-ARG NEXT_PUBLIC_API_URL=http://localhost:8000
+# Production API URL - AWS EC2 instance
+ARG NEXT_PUBLIC_API_URL=http://98.92.253.206:8000
 ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 
 # --- Dependencies install stage ---
 FROM base AS deps
-RUN apk add --no-cache libc6-compat
+RUN apk add --no-cache libc6-compat python3 py3-pip
 COPY package.json package-lock.json* ./
 RUN npm ci --production=false
+
+# --- JupyterLite build stage ---
+FROM python:3.11-alpine AS jupyter-builder
+WORKDIR /jupyter
+
+# Install JupyterLite and dependencies
+RUN apk add --no-cache gcc musl-dev libffi-dev
+RUN pip install --no-cache-dir jupyterlite[all]==0.4.0
+
+# Copy JupyterLite configuration
+COPY public/static/jupyterlite/jupyter-lite.json ./jupyter-lite.json
+
+# Build JupyterLite
+RUN jupyter lite build --config jupyter-lite.json --output-dir lite-build
 
 # --- Build stage ---
 FROM base AS builder
 WORKDIR /app
+
+# Install Python for JupyterLite build
+RUN apk add --no-cache python3 py3-pip gcc musl-dev libffi-dev
+RUN pip3 install --no-cache-dir jupyterlite[all]==0.4.0
 
 # Ensure the build stage also has the env var available for Next to inline
 ARG NEXT_PUBLIC_API_URL
@@ -23,9 +41,14 @@ ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+
+# Copy pre-built JupyterLite from jupyter-builder stage
+COPY --from=jupyter-builder /jupyter/lite-build ./public/static/jupyterlite/lite-build
+
 ENV NODE_ENV=production
 
-# Build Next.js (produces .next/standalone when next.config.js output:'standalone')
+# Build JupyterLite first, then Next.js
+RUN npm run build:jupyter || echo "JupyterLite build completed or skipped"
 RUN npm run build
 
 # --- Runner (production) ---

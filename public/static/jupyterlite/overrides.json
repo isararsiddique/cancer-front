@@ -1,0 +1,8 @@
+{
+  "@jupyterlab/launcher-extension:plugin": {
+    "kernel": true
+  },
+  "@jupyterlab/notebook-extension:tracker": {
+    "defaultKernel": "python"
+  }
+}

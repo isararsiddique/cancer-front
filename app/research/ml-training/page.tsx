@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Code, Brain, Zap, TrendingUp, BarChart3, LogOut, User, Play, Download, Save, Trash2, RefreshCw, ChevronDown, ChevronUp, FileText, AlertTriangle, Plus, Calendar, CheckCircle, X } from 'lucide-react';
 import { useQuery, useMutation } from '@tanstack/react-query';
@@ -8,6 +8,277 @@ import { authApi } from '@/lib/api/auth';
 import { researchApi } from '@/lib/api/research';
 import { mlExecuteApi } from '@/lib/api/ml_execute';
 import ProfileModal from '@/components/ProfileModal';
+import { createBridge } from 'jupyter-iframe-commands-host';
+
+// JupyterLite Notebook Component with Command Bridge
+interface JupyterLiteNotebookProps {
+  selectedRequest: string;
+  dataPreview: any[];
+  availableColumns: string[];
+}
+
+function JupyterLiteNotebook({ selectedRequest, dataPreview, availableColumns }: JupyterLiteNotebookProps) {
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const [userId, setUserId] = useState<string>('');
+
+  // Get user ID from localStorage or API
+  useEffect(() => {
+    const token = localStorage.getItem('access_token');
+    if (token) {
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        const userIdentifier = payload.sub || payload.user_id || payload.email || 'default';
+        setUserId(userIdentifier);
+      } catch (error) {
+        console.error('Failed to decode token:', error);
+        setUserId('default');
+      }
+    } else {
+      setUserId('default');
+    }
+  }, []);
+
+  // Clear old cache on mount
+  useEffect(() => {
+    if (userId) {
+      clearOldJupyterCache(userId);
+    }
+  }, [userId]);
+
+  // Clear JupyterLite cache older than 12 hours
+  const clearOldJupyterCache = (userId: string) => {
+    const TWELVE_HOURS = 12 * 60 * 60 * 1000;
+    const now = Date.now();
+    
+    const lastAccessStr = localStorage.getItem(`jupyterlite_last_access_${userId}`);
+    if (lastAccessStr) {
+      const lastAccess = parseInt(lastAccessStr);
+      const timeSinceLastAccess = now - lastAccess;
+      
+      if (timeSinceLastAccess > TWELVE_HOURS) {
+        console.log(`Clearing JupyterLite cache for user ${userId}`);
+        
+        if (window.indexedDB) {
+          const dbName = `JupyterLite Storage ${userId}`;
+          try {
+            indexedDB.deleteDatabase(dbName);
+          } catch (error) {
+            console.error('Failed to clear IndexedDB:', error);
+          }
+        }
+      }
+    }
+    
+    localStorage.setItem(`jupyterlite_last_access_${userId}`, Date.now().toString());
+  };
+
+  const downloadNotebook = () => {
+    if (!selectedRequest) return;
+    
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+    const token = localStorage.getItem('access_token');
+    
+    if (!token) {
+      alert('Authentication token not found. Please log in again.');
+      return;
+    }
+    
+    // Embed token directly in notebook (secure because notebook is downloaded to user's device)
+    const notebook = {
+      cells: [
+        {
+          cell_type: 'markdown',
+          metadata: {},
+          source: [
+            `# Research Data Analysis\n\n`,
+            `**Request ID:** ${selectedRequest}\n\n`,
+            `🔒 **Security Notice:**\n`,
+            `- This notebook contains an embedded authentication token\n`,
+            `- Do NOT share this notebook with others\n`,
+            `- Token will expire - download a fresh notebook if needed\n`,
+            `- Data export functions are disabled\n`
+          ]
+        },
+        {
+          cell_type: 'code',
+          execution_count: null,
+          metadata: {},
+          outputs: [],
+          source: [
+            'import pandas as pd\n',
+            'import pyodide.http\n',
+            '\n',
+            `# Embedded authentication (DO NOT SHARE THIS NOTEBOOK)\n`,
+            `AUTH_TOKEN = "${token}"\n`,
+            `REQUEST_ID = "${selectedRequest}"\n`,
+            `API_URL = "${API_URL}/api/v1/research/secure-data/" + REQUEST_ID\n`,
+            '\n',
+            'print("🔒 Fetching secure data...")\n',
+            'print(f"Request ID: {REQUEST_ID}")\n',
+            '\n',
+            'try:\n',
+            '    headers = {"Authorization": f"Bearer {AUTH_TOKEN}"}\n',
+            '    response = await pyodide.http.pyfetch(API_URL, method="GET", headers=headers)\n',
+            '    \n',
+            '    if response.status == 200:\n',
+            '        result = await response.json()\n',
+            '        df = pd.DataFrame(result["data"])\n',
+            '        \n',
+            '        # Block ALL export functions to prevent data download\n',
+            '        def _block_export(*args, **kwargs):\n',
+            '            raise PermissionError("🔒 Data export is disabled for security. You can only analyze data within this notebook.")\n',
+            '        \n',
+            '        df.to_csv = _block_export\n',
+            '        df.to_excel = _block_export\n',
+            '        df.to_json = _block_export\n',
+            '        df.to_pickle = _block_export\n',
+            '        df.to_parquet = _block_export\n',
+            '        df.to_sql = _block_export\n',
+            '        df.to_hdf = _block_export\n',
+            '        df.to_feather = _block_export\n',
+            '        df.to_clipboard = _block_export\n',
+            '        \n',
+            '        print(f"\\n✅ SUCCESS! Data loaded into variable: df")\n',
+            '        print(f"📊 Dataset: {len(df)} rows × {len(df.columns)} columns")\n',
+            '        print(f"\\n📋 Available columns:")\n',
+            '        for i, col in enumerate(df.columns, 1):\n',
+            '            print(f"  {i}. {col}")\n',
+            '        print(f"\\n⚠️  Note: Data export functions (to_csv, to_excel, etc.) are disabled")\n',
+            '        print(f"\\n👉 Preview first 5 rows:")\n',
+            '        display(df.head())\n',
+            '        \n',
+            '    elif response.status == 401:\n',
+            '        print("\\n❌ Authentication failed!")\n',
+            '        print("Your token may have expired. Please:")\n',
+            '        print("1. Log in to the platform again")\n',
+            '        print("2. Download a fresh notebook")\n',
+            '        print("3. Upload and run in JupyterLite")\n',
+            '        \n',
+            '    elif response.status == 403:\n',
+            '        print("\\n❌ Access denied!")\n',
+            '        print("Possible reasons:")\n',
+            '        print("- Request not approved yet")\n',
+            '        print("- Token expired")\n',
+            '        print("- You don\'t own this request")\n',
+            '        print("\\nPlease contact admin or download a fresh notebook.")\n',
+            '        \n',
+            '    elif response.status == 404:\n',
+            '        print("\\n❌ Request not found!")\n',
+            '        print(f"Request ID: {REQUEST_ID}")\n',
+            '        print("Please verify the request ID is correct.")\n',
+            '        \n',
+            '    else:\n',
+            '        print(f"\\n❌ Error: HTTP {response.status}")\n',
+            '        error_text = await response.text()\n',
+            '        print(f"Details: {error_text}")\n',
+            '        \n',
+            'except Exception as e:\n',
+            '    print(f"\\n❌ Exception occurred: {e}")\n',
+            '    print("\\nTroubleshooting:")\n',
+            '    print("1. Check your internet connection")\n',
+            '    print("2. Verify API URL is accessible")\n',
+            '    print("3. Download a fresh notebook")\n'
+          ]
+        },
+        {
+          cell_type: 'markdown',
+          metadata: {},
+          source: [
+            '## 📊 Your Analysis Starts Here\n\n',
+            'The data is now loaded in the `df` variable (pandas DataFrame).\n\n',
+            '### Quick Start Examples:\n\n',
+            '```python\n',
+            '# View basic statistics\n',
+            'df.describe()\n',
+            '\n',
+            '# Check data types and missing values\n',
+            'df.info()\n',
+            '\n',
+            '# Count unique values in a column\n',
+            'df["column_name"].value_counts()\n',
+            '\n',
+            '# Filter data\n',
+            'df[df["age_at_diagnosis"] > 50]\n',
+            '\n',
+            '# Group by and aggregate\n',
+            'df.groupby("gender")["age_at_diagnosis"].mean()\n',
+            '\n',
+            '# Correlation matrix\n',
+            'df.corr()\n',
+            '\n',
+            '# Simple visualization\n',
+            'import matplotlib.pyplot as plt\n',
+            'df["age_at_diagnosis"].hist(bins=20)\n',
+            'plt.xlabel("Age at Diagnosis")\n',
+            'plt.ylabel("Frequency")\n',
+            'plt.title("Age Distribution")\n',
+            'plt.show()\n',
+            '```\n'
+          ]
+        },
+        {
+          cell_type: 'code',
+          execution_count: null,
+          metadata: {},
+          outputs: [],
+          source: ['# Your analysis code here\n', '# Example: df.describe()\n']
+        }
+      ],
+      metadata: {
+        kernelspec: { display_name: 'Python (Pyodide)', language: 'python', name: 'python' },
+        language_info: { name: 'python', version: '3.10.2' }
+      },
+      nbformat: 4,
+      nbformat_minor: 5
+    };
+    
+    const blob = new Blob([JSON.stringify(notebook, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `secure_data_${selectedRequest}.ipynb`;
+    a.click();
+    URL.revokeObjectURL(url);
+    
+    // Show success message
+    alert('✅ Notebook downloaded!\n\n⚠️ IMPORTANT:\n- Do NOT share this notebook (contains auth token)\n- Upload to JupyterLite and run the first cell\n- Token will expire - download fresh if needed');
+  };
+
+  return (
+    <div className="bg-white rounded-xl shadow-lg p-6">
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+            <Code className="w-6 h-6 text-purple-600" />
+            Interactive Python Notebook (JupyterLite)
+          </h3>
+          <p className="text-sm text-gray-600 mt-1">
+            {dataPreview?.length || 0} rows × {availableColumns.length} columns
+          </p>
+        </div>
+        {selectedRequest && dataPreview && dataPreview.length > 0 && (
+          <button
+            onClick={downloadNotebook}
+            className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-medium flex items-center gap-2"
+          >
+            <Download className="w-4 h-4" />
+            Download Notebook
+          </button>
+        )}
+      </div>
+
+      {/* Embedded JupyterLite Lab */}
+      <iframe
+        ref={iframeRef}
+        src={`/static/jupyterlite/lite-build/lab/index.html?storage=${encodeURIComponent(userId)}`}
+        width="100%"
+        height="800px"
+        className="border-2 border-gray-200 rounded-lg"
+        title="JupyterLite Lab"
+      />
+    </div>
+  );
+}
 
 export default function MLTrainingPage() {
   const router = useRouter();
@@ -306,12 +577,31 @@ print("Click 'Download Complete Package (ZIP)' to get everything!")
     }
   }, [router, mounted]);
 
-  // Fetch data preview when request is selected
+  // Fetch full dataset when request is selected
   useEffect(() => {
     if (selectedRequest && myRequests?.requests) {
       fetchDataPreview();
     }
   }, [selectedRequest, myRequests]);
+
+  const transformDataForML = (data: any[]) => {
+    // Transform data: null → 0, false → 0, true → 1
+    return data.map(row => {
+      const transformedRow: any = {};
+      for (const [key, value] of Object.entries(row)) {
+        if (value === null) {
+          transformedRow[key] = 0;
+        } else if (value === false) {
+          transformedRow[key] = 0;
+        } else if (value === true) {
+          transformedRow[key] = 1;
+        } else {
+          transformedRow[key] = value;
+        }
+      }
+      return transformedRow;
+    });
+  };
 
   const fetchDataPreview = async () => {
     try {
@@ -334,7 +624,7 @@ print("Click 'Download Complete Package (ZIP)' to get everything!")
       const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
       const apiUrl = `${API_BASE}/api/v1/research/download-json?token=${request.download_token}`;
       
-      console.log('Fetching data for request:', selectedRequest);
+      console.log('Fetching FULL dataset for request:', selectedRequest);
       console.log('Download token:', request.download_token);
       console.log('API URL:', apiUrl);
       
@@ -348,10 +638,15 @@ print("Click 'Download Complete Package (ZIP)' to get everything!")
       
       if (response.ok) {
         const data = await response.json();
-        console.log('✅ Data fetched successfully:', data.length, 'records');
+        console.log('✅ Full dataset fetched:', data.length, 'records');
         
         if (data.length > 0) {
-          setDataPreview(data.slice(0, 5)); // Preview first 5 rows
+          // Transform data for ML (null→0, false→0, true→1)
+          const transformedData = transformDataForML(data);
+          console.log('✅ Data transformed for ML');
+          
+          // Store FULL transformed dataset
+          setDataPreview(transformedData);
           
           // Extract column names
           const columns = Object.keys(data[0]);
@@ -1227,79 +1522,12 @@ print("Click 'Download Complete Package (ZIP)' to get everything!")
         {/* Custom Code Tab */}
         {activeTab === 'custom' && (
           <div className="space-y-6">
-            {/* Data Preview */}
-            {dataPreview && (
-              <div className="bg-white rounded-xl shadow-lg p-6">
-                <h3 className="text-lg font-bold text-gray-900 mb-3">Data Preview (First 5 rows)</h3>
-                <div className="overflow-x-auto">
-                  <table className="min-w-full text-sm">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        {Object.keys(dataPreview[0] || {}).map((key) => (
-                          <th key={key} className="px-4 py-2 text-left font-medium text-gray-700">
-                            {key}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {dataPreview.map((row: any, idx: number) => (
-                        <tr key={idx} className="border-t">
-                          {Object.values(row).map((val: any, i: number) => (
-                            <td key={i} className="px-4 py-2 text-gray-600">
-                              {String(val)}
-                            </td>
-                          ))}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-
-            {/* Code Editor */}
-            <div className="bg-white rounded-xl shadow-lg p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-                  <Code className="w-6 h-6 text-purple-600" />
-                  Python Code Editor
-                </h3>
-                <button
-                  onClick={handleCustomExecute}
-                  disabled={isExecuting || !selectedRequest}
-                  className="px-6 py-3 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 text-white rounded-lg transition-colors flex items-center gap-2 font-semibold"
-                >
-                  {isExecuting ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                      Executing...
-                    </>
-                  ) : (
-                    <>
-                      <Play className="w-4 h-4" />
-                      Run Code
-                    </>
-                  )}
-                </button>
-              </div>
-
-              <textarea
-                value={customCode}
-                onChange={(e) => setCustomCode(e.target.value)}
-                className="w-full h-96 px-4 py-3 font-mono text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-gray-50"
-                placeholder="Write your Python code here..."
-                spellCheck={false}
-              />
-
-              <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                <p className="text-sm text-blue-800">
-                  <strong>Available:</strong> pandas (pd), numpy (np), matplotlib (plt), seaborn (sns), sklearn, xgboost
-                  <br />
-                  <strong>Data:</strong> Your dataset is available as <code className="bg-blue-100 px-2 py-1 rounded">df</code> DataFrame
-                </p>
-              </div>
-            </div>
+            {/* JupyterLite Notebook */}
+            <JupyterLiteNotebook 
+              selectedRequest={selectedRequest}
+              dataPreview={dataPreview}
+              availableColumns={availableColumns}
+            />
 
             {/* Execution Results */}
             {executionResult && (

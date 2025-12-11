@@ -1,0 +1,42 @@
+{
+  "jupyter-config-data": {
+    "appName": "ML Training Lab",
+    "appUrl": "/static/jupyterlite/lite-build",
+    "appVersion": "0.1.0",
+    "baseUrl": "/static/jupyterlite/lite-build/",
+    "collaborative": false,
+    "defaultKernelName": "python",
+    "disabledExtensions": [
+      "@jupyterlab/filebrowser-extension:share-file",
+      "@jupyterlab/filebrowser-extension:share-file",
+      "@jupyterlab/filebrowser-extension:share-file"
+    ],
+    "exposeAppInBrowser": true,
+    "faviconUrl": "/static/jupyterlite/lite-build/favicon.ico",
+    "fullMathjaxUrl": "/static/jupyterlite/lite-build/build/mathjax/tex-chtml.js",
+    "mathjaxConfig": "TeX-AMS_CHTML-full,Safe",
+    "settingsOverrides": {
+      "@jupyterlab/apputils-extension:notification": {
+        "fetchNews": "false"
+      },
+      "@jupyterlab/docmanager-extension:plugin": {
+        "autosave": true,
+        "autosaveInterval": 120
+      },
+      "@jupyterlab/launcher-extension:plugin": {
+        "kernel": true
+      }
+    }
+  },
+  "jupyter-lite-schema-version": 0,
+  "litePluginSettings": {
+    "@jupyterlite/pyodide-kernel-extension:kernel": {
+      "disablePyPIFallback": false,
+      "pipliteUrls": [
+        "/static/jupyterlite/lite-build/build/pyodide/piplite-0.4.2-py3-none-any.whl"
+      ],
+      "pipliteWheelUrl": "/static/jupyterlite/lite-build/build/pyodide/piplite-0.4.2-py3-none-any.whl",
+      "pyodideUrl": "/static/jupyterlite/lite-build/build/pyodide/pyodide.js"
+    }
+  }
+}
